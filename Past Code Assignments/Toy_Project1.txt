@@ -1,0 +1,294 @@
+
+#include <LiquidCrystal.h>     // Includes liquidcrystal library
+#include <Servo.h>             // Include servo library
+
+LiquidCrystal lcd(7, 6, 5, 4, 3, 2);	// Defines LCD array using pins 13,12,5,4,3,2
+Servo servo1;                           // Servo control object
+//int time = 150;							// Entire variable declaration()
+int reset_time = 25;
+int button1Pin = 1;  // Pushbutton 1 pin
+int button2Pin = 2;  // Pushbutton 2 pin
+int button3Pin = 3;  // Pushbutton 3 pin
+int button4Pin = 4;  // Pushbutton 4 pin
+
+
+void setup()
+{
+	pinMode(8, OUTPUT);         // Tells arduino that pin 8 is an output (redLED)
+	pinMode(9, OUTPUT);         // Tells arduino that pin 9 is an output (greenLED)
+	pinMode(10, OUTPUT);        // Tells arduino that pin 10 is an output (piezo buzzer)
+	pinMode(11, OUTPUT);        // Tells arduino that pin 11 is an output (servo)
+	lcd.begin(16, 2);           // Tells the arduino the size of the LCD 16x2
+	//lcd.clear();		        // Clears the LCD screen at this point from last write
+//	lcd.print("Countdown");		// Writes the word "seconds" on LCD
+	servo1.attach(11);			// Associates servo with pin 9
+	Serial.begin(9600);         // Initiates serial print output
+}
+
+
+void loop()
+{
+	Serial.print("TSE VSE SPOCHATKU");
+	int time = 150;
+	int sequence[4];
+	random_sequence(&sequence[0]);
+	Serial.print("Numbers:");
+	for(int k = 0; k < 4 ; k++)
+	{
+
+		Serial.println(sequence[k]);
+	}
+	int butstate[4];
+	int variable[] = {0, 0, 0, 0};
+	wire_check(&butstate[0]);
+	time = time_starter(time);
+	for(int i = 0; i < 4; i++)//checks for each sequence
+	{
+		wire_check(&butstate[0]);
+		int a = 1;
+		while(a == 1)
+		{
+
+			wire_check(&butstate[0]);
+			if(butstate[sequence[i] - 1] > 1000)
+			{
+				time = normal_time(time);
+				a = 0;
+				variable[sequence[i] - 1] = 10;
+			}
+			else
+			{
+				time = normal_time(time);
+			}
+
+
+
+
+			if(butstate[0] > 1000 && sequence[i] != 1 && 10 != variable[0])
+			{
+				while((butstate[0] > 1000 && sequence[i] != 1 && 10 != variable[0]))
+				{
+					time = quicker_time(time, &variable[0]);
+					wire_check(&butstate[0]);
+				}
+				time = normal_time(time);
+			}
+			else if(butstate[1] > 1000 && sequence[i] != 2 && 10  != variable[1])
+			{
+				while((butstate[1] > 1000 && sequence[i] != 2 && 10 != variable[1]))
+				{
+					time = quicker_time(time, &variable[0]);
+					wire_check(&butstate[0]);
+				}
+				time = normal_time(time);
+			}
+			else if(butstate[2] > 1000 && sequence[i] != 3 && 10  != variable[2])
+			{
+				while((butstate[2] > 1000 && sequence[i] != 3 && 10 != variable[2]))
+				{
+					time = quicker_time(time, &variable[0]);
+					wire_check(&butstate[0]);
+				}
+				time = normal_time(time);
+			}
+			else if(butstate[3] > 1000 && sequence[i] != 4 && 10  != variable[3])
+			{
+				while((butstate[3] > 1000 && sequence[i] != 4 && 10 != variable[3]))
+				{
+					time = quicker_time(time, &variable[0]);
+					wire_check(&butstate[0]);
+				}
+				time = normal_time(time);
+			}
+			wire_check(&butstate[0]);
+
+			if(time <= 0)
+			{
+				tone(10, 15);              // Emits tone 10 from piezo
+				lcd.setCursor(0, 1); // Positions the cursor on the first column (13) and the first line (1) LCD
+				lcd.clear();
+				lcd.print("BOOM!!!");     // Write the current value of the count variable in the LCD
+				int position;
+				servo1.write(0);          // Tell servo to go to 90 degrees
+				delay(2500);               // Pause to give servo time to move
+				servo1.write(90);        // Tell servo to go to 180 degrees
+				goto DIDBOMBEXPLOD;
+			}
+
+		}
+	}
+DIDBOMBEXPLOD:
+
+	if(time != 0 )
+	{
+		digitalWrite(8, LOW);
+		digitalWrite(9, HIGH);
+		lcd.clear();
+		lcd.print("Not Bad :|");
+		delay(5000);
+	}
+reconnectwires:
+	reset_time = 25;
+	while(reset_time > 1)
+	{
+		reset_time = restart();
+		
+	}
+	wire_check(&butstate[0]);
+if(butstate[0] >= 500 || butstate[1] >= 500 || butstate[2] >= 500 || butstate[3] >= 500)
+		{
+			goto reconnectwires;
+		}
+		
+}
+
+void random_sequence(int * list)
+{
+	int seq = 4;
+	int index[3];
+	int index_n;
+
+	index[0] = random(0, 4);
+	list[index[0]] = seq;
+	seq = seq - 1;
+	for(int i = 0; i < 2; i++)
+	{
+		index_n = random(0, 4);
+		if(index_n != index[i] && index_n != index[0])
+		{
+			list[index_n] = seq;
+			seq = seq - 1;
+			index[i + 1] = index_n;
+
+		}
+		else
+		{
+			i = i - 1;
+		}
+	}
+
+	while(seq > 0)
+	{
+		index_n = random(0, 4);
+		if(index_n != index[0] && index_n != index[1] && index_n != index[2])
+		{
+			list[index_n] = seq;
+			seq = seq - 1;
+
+		}
+	}
+
+
+}
+
+void wire_check(int * list)
+{
+	int button1read, button2read, button3read, button4read;
+	button1read = analogRead(button1Pin);   //sets "button1read as signal from analog pin 1
+	button2read = analogRead(button2Pin);   //sets "button2read as signal from analog pin 2
+	button3read = analogRead(button3Pin);   //sets "button3read as signal from analog pin 3
+	button4read = analogRead(button4Pin);   //sets "button4read as signal from analog pin 4
+
+	list[0] = button1read;
+	list[1] = button2read;
+	list[2] = button3read;
+	list[3] = button4read;
+
+}
+
+
+long normal_time(int time)
+{
+	
+		tone(10, 8);               // emits tone 8 from piezo
+		delay(10);                // 10ms delay
+		noTone(10);               // Turns off tone
+		digitalWrite(8, HIGH);   //Turns on Red LED
+		lcd.begin(16, 2);
+		lcd.clear();
+		lcd.print("Countdown");
+		lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+		lcd.print("  ");          // Write the current value of the count variable in the LCD
+		lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+		lcd.print(time);          // Write the current value of the count variable in the LCD
+		time--;                   // Decrement count variable takes 1 unit off of time
+	delay(1000);
+	return(time);
+}
+
+
+long quicker_time(int time, int * variable)
+{
+
+	if(time == 0)
+	{
+		tone(10, 15);              // Emits tone 10 from piezo
+		lcd.begin(16, 2);
+		lcd.clear();
+		lcd.setCursor(0, 1);      // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+		int position;
+		servo1.write(0);         // Tell servo to go to 90 degrees
+		delay(200);               // Pause to get it time to move
+		servo1.write(180);        // Tell servo to go to 180 degrees
+		lcd.print("BOOM!!!");     // Write the current value of the count variable in the LCD
+		delay(5000);
+		variable[0] = 10;
+		variable[0] = 10;
+		variable[0] = 10;
+		variable[0] = 10;
+	}
+	else
+	{
+		tone(10, 8);               // emits tone 8 from piezo
+		delay(10);   		// 10ms delay
+		lcd.clear();
+		lcd.print("Countdown");
+		noTone(10);                // turns off tone
+		digitalWrite(8, HIGH);   //Turns on Red LED
+		lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+		lcd.print("  ");          // Write the current value of the count variable in the LCD
+		lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+		lcd.print(time);          // Write the current value of the count variable in the LCD
+		time--;                   // Decrement count variable takes 1 unit off of time
+	}
+	return(time);
+	delay(75);
+
+}
+
+long restart()
+{
+	lcd.begin(16, 2);           // Tells the arduino the size of the LCD 16x2
+	lcd.print("Reconnect wires");							     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+	lcd.setCursor(0, 2);
+	lcd.print("Restart in:");
+	tone(10, 8);               // emits tone 8 from piezo
+	delay(10);                // 10ms delay
+	noTone(10);               // Turns off tone
+	lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+	lcd.print("  ");          // Write the current value of the count variable in the LCD
+	lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+	lcd.print(reset_time);          // Write the current value of the count variable in the LCD
+	reset_time--;
+	delay(1000);
+	return(reset_time);
+
+}
+long time_starter(int time)
+{
+	tone(10, 8);               // emits tone 8 from piezo
+	delay(10);                // 10ms delay
+	noTone(10);               // Turns off tone
+	digitalWrite(8, HIGH);   //Turns on Red LED
+	lcd.begin(16, 2);
+	lcd.clear();
+	lcd.print("Countdown");
+	lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+	lcd.print("  ");          // Write the current value of the count variable in the LCD
+	lcd.setCursor(13, 1);     // Positions the cursor on the fourteenth column (13) and the second line (1) LCD
+	lcd.print(time);          // Write the current value of the count variable in the LCD
+	time--;                   // Decrement count variable takes 1 unit off of time
+
+	delay(1000); // Waits for 1 second
+	return(time);
+}
